@@ -1,149 +1,90 @@
-import { LibroModel } from '../models/libro.model.js';
+import { ObjectId } from 'mongodb';
+import { getDB } from '../config/db.js';
 
-export class LibroController {
-  /**
-   * Crear un nuevo libro (Solo Admin)
-   */
-  static async crear(req, res, next) {
-    try {
-      const { isbn } = req.body;
+// Rol: Admin -> Gestionar libros (Crear, editar, listar, buscar, eliminar)
 
-      // Verificar si ya existe un libro con ese ISBN
-      const existing = await LibroModel.findByIsbn(isbn);
-      if (existing) {
-        return res.status(409).json({
-          status: 'fail',
-          message: `Ya existe un libro registrado con el ISBN '${isbn}'`
-        });
-      }
+// 1. Crear Libro
+export const crearLibro = async (req, res) => {
+  try {
+    const db = getDB();
+    const nuevoLibro = {
+      ...req.body,
+      anioPublicacion: Number(req.body.anioPublicacion),
+      precioVenta: Number(req.body.precioVenta),
+      cantidadDisponible: Number(req.body.cantidadDisponible),
+      createdAt: new Date()
+    };
 
-      const libro = await LibroModel.create(req.body);
-
-      res.status(201).json({
-        status: 'success',
-        message: 'Libro creado exitosamente en el inventario',
-        libro
-      });
-    } catch (error) {
-      next(error);
-    }
+    const resultado = await db.collection('libros').insertOne(nuevoLibro);
+    res.status(201).json({ mensaje: 'Libro creado con éxito', libroId: resultado.insertedId, libro: nuevoLibro });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Listar todos los libros con paginación y filtros
-   */
-  static async listar(req, res, next) {
-    try {
-      const resultado = await LibroModel.findAll(req.query);
-
-      res.status(200).json({
-        status: 'success',
-        ...resultado
-      });
-    } catch (error) {
-      next(error);
-    }
+// 2. Listar Libros
+export const listarLibros = async (req, res) => {
+  try {
+    const db = getDB();
+    const libros = await db.collection('libros').find().toArray();
+    res.status(200).json(libros);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Buscar libros por término (título, autor, categoría, isbn)
-   */
-  static async buscar(req, res, next) {
-    try {
-      const { q } = req.query;
-
-      if (!q || !q.trim()) {
-        return res.status(400).json({
-          status: 'fail',
-          message: 'Debe proporcionar un parámetro de búsqueda (?q=término)'
-        });
-      }
-
-      const libros = await LibroModel.search(q.trim());
-
-      res.status(200).json({
-        status: 'success',
-        total: libros.length,
-        busqueda: q,
-        libros
-      });
-    } catch (error) {
-      next(error);
+// 3. Buscar Libros (por título, autor o categoría)
+export const buscarLibros = async (req, res) => {
+  try {
+    const { termino } = req.query;
+    if (!termino) {
+      return res.status(400).json({ error: 'Debe enviar un término de búsqueda: ?termino=algo' });
     }
+
+    const db = getDB();
+    const regex = new RegExp(termino, 'i');
+    const libros = await db.collection('libros').find({
+      $or: [{ titulo: regex }, { autor: regex }, { categoria: regex }]
+    }).toArray();
+
+    res.status(200).json(libros);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Obtener detalle de un libro por su ID
-   */
-  static async obtenerPorId(req, res, next) {
-    try {
-      const { id } = req.params;
-      const libro = await LibroModel.findById(id);
+// 4. Editar Libro
+export const editarLibro = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDB();
 
-      if (!libro) {
-        return res.status(404).json({
-          status: 'fail',
-          message: `Libro con ID '${id}' no encontrado`
-        });
-      }
+    const datosActualizar = { ...req.body };
+    delete datosActualizar._id;
 
-      res.status(200).json({
-        status: 'success',
-        libro
-      });
-    } catch (error) {
-      next(error);
-    }
+    if (datosActualizar.precioVenta) datosActualizar.precioVenta = Number(datosActualizar.precioVenta);
+    if (datosActualizar.cantidadDisponible) datosActualizar.cantidadDisponible = Number(datosActualizar.cantidadDisponible);
+
+    await db.collection('libros').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: datosActualizar }
+    );
+
+    res.status(200).json({ mensaje: 'Libro actualizado exitosamente' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Editar libro (Solo Admin)
-   */
-  static async editar(req, res, next) {
-    try {
-      const { id } = req.params;
+// 5. Eliminar Libro
+export const eliminarLibro = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDB();
 
-      const libroActualizado = await LibroModel.update(id, req.body);
-
-      if (!libroActualizado) {
-        return res.status(404).json({
-          status: 'fail',
-          message: `Libro con ID '${id}' no encontrado o no pudo actualizarse`
-        });
-      }
-
-      res.status(200).json({
-        status: 'success',
-        message: 'Libro e inventario actualizados correctamente',
-        libro: libroActualizado
-      });
-    } catch (error) {
-      next(error);
-    }
+    await db.collection('libros').deleteOne({ _id: new ObjectId(id) });
+    res.status(200).json({ mensaje: 'Libro eliminado exitosamente' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-
-  /**
-   * Eliminar un libro (Solo Admin)
-   */
-  static async eliminar(req, res, next) {
-    try {
-      const { id } = req.params;
-
-      const eliminado = await LibroModel.delete(id);
-
-      if (!eliminado) {
-        return res.status(404).json({
-          status: 'fail',
-          message: `Libro con ID '${id}' no encontrado o ya fue eliminado`
-        });
-      }
-
-      res.status(200).json({
-        status: 'success',
-        message: 'Libro eliminado exitosamente del inventario'
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-}
+};

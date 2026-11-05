@@ -1,49 +1,33 @@
 import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
-import { config } from './env.js';
-import { UsuarioModel } from '../models/usuario.model.js';
-import { COOKIE_NAME } from '../utils/cookies.js';
+import dotenv from 'dotenv';
+import { getDB } from './db.js';
 
-// Extractor personalizado para obtener el token desde cookies o headers
-const cookieOrHeaderExtractor = (req) => {
-  let token = null;
+dotenv.config();
 
-  // 1. Intentar extraer de cookies firmadas o normales
-  if (req && req.cookies && req.cookies[COOKIE_NAME]) {
-    token = req.cookies[COOKIE_NAME];
-  } else if (req && req.signedCookies && req.signedCookies[COOKIE_NAME]) {
-    token = req.signedCookies[COOKIE_NAME];
+// Módulo 5: Autenticación con JWT mediante PassportJS
+// Extrae el token de las Cookies (Módulo 3) o del encabezado Bearer
+const extractor = (req) => {
+  if (req && req.cookies && req.cookies.token) {
+    return req.cookies.token;
   }
-
-  // 2. Si no hay cookie, extraer de cabecera Authorization: Bearer <token>
-  if (!token && req && req.headers && req.headers.authorization) {
-    const parts = req.headers.authorization.split(' ');
-    if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
-      token = parts[1];
-    }
-  }
-
-  return token;
+  return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
 };
 
-const jwtOptions = {
-  jwtFromRequest: cookieOrHeaderExtractor,
-  secretOrKey: config.jwtSecret
+const opciones = {
+  jwtFromRequest: extractor,
+  secretOrKey: process.env.JWT_SECRET || 'campuslands_secreto_2026'
 };
 
 passport.use(
-  new JwtStrategy(jwtOptions, async (jwtPayload, done) => {
+  new JwtStrategy(opciones, async (payload, done) => {
     try {
-      // Buscar usuario en base de datos usando el ID o la Identificación del payload
-      const user = await UsuarioModel.findByIdentificacion(jwtPayload.identificacion);
-
-      if (!user) {
-        return done(null, false, { message: 'Usuario no encontrado o token inválido' });
+      const db = getDB();
+      const usuario = await db.collection('usuarios').findOne({ identificacion: payload.identificacion });
+      if (!usuario) {
+        return done(null, false);
       }
-
-      // Descartar la contraseña del objeto usuario inyectado en req.user
-      const { password, ...userWithoutPassword } = user;
-      return done(null, userWithoutPassword);
+      return done(null, usuario);
     } catch (error) {
       return done(error, false);
     }

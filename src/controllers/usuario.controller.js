@@ -1,130 +1,75 @@
-import { UsuarioModel } from '../models/usuario.model.js';
-import { PrestamoModel } from '../models/prestamo.model.js';
-import { VentaModel } from '../models/venta.model.js';
+import bcrypt from 'bcryptjs';
+import { getDB } from '../config/db.js';
 
-export class UsuarioController {
-  /**
-   * Obtener perfil del usuario autenticado
-   */
-  static async obtenerPerfil(req, res, next) {
-    try {
-      const usuario = await UsuarioModel.findByIdentificacion(req.user.identificacion);
+// Rol: Usuario / Cliente
+// - Administrar perfil (No cambia ID)
+// - Ver historial prestamos
+// - Ver Compras
 
-      if (!usuario) {
-        return res.status(404).json({
-          status: 'fail',
-          message: 'Usuario no encontrado'
-        });
-      }
-
-      const { password, ...perfil } = usuario;
-
-      res.status(200).json({
-        status: 'success',
-        perfil
-      });
-    } catch (error) {
-      next(error);
-    }
+// 1. Ver mi perfil
+export const obtenerPerfil = async (req, res) => {
+  try {
+    const db = getDB();
+    const usuario = await db.collection('usuarios').findOne(
+      { identificacion: req.user.identificacion },
+      { projection: { password: 0 } }
+    );
+    res.status(200).json(usuario);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Administrar/Actualizar perfil
-   * Cumple con la regla de negocio: "No cambia ID"
-   */
-  static async actualizarPerfil(req, res, next) {
-    try {
-      const identificacion = req.user.identificacion;
+// 2. Administrar perfil (Regla de negocio: No cambia ID)
+export const actualizarPerfil = async (req, res) => {
+  try {
+    const db = getDB();
+    const datos = { ...req.body };
 
-      // Si intenta cambiar el email, verificar que no esté ocupado por otro usuario
-      if (req.body.email) {
-        const existente = await UsuarioModel.findByEmail(req.body.email);
-        if (existente && existente.identificacion !== identificacion) {
-          return res.status(409).json({
-            status: 'fail',
-            message: `El correo electrónico '${req.body.email}' ya se encuentra en uso por otro usuario`
-          });
-        }
-      }
+    // Protección estricta: No cambiar ID
+    delete datos.identificacion;
+    delete datos._id;
+    delete datos.rol;
 
-      const usuarioActualizado = await UsuarioModel.updatePerfil(identificacion, req.body);
-
-      if (!usuarioActualizado) {
-        return res.status(404).json({
-          status: 'fail',
-          message: 'No fue posible actualizar el perfil del usuario'
-        });
-      }
-
-      const { password, ...perfilActualizado } = usuarioActualizado;
-
-      res.status(200).json({
-        status: 'success',
-        message: 'Perfil de usuario actualizado exitosamente (Identificación conservada intacta)',
-        perfil: perfilActualizado
-      });
-    } catch (error) {
-      next(error);
+    if (datos.password) {
+      datos.password = await bcrypt.hash(datos.password, 10);
     }
+
+    await db.collection('usuarios').updateOne(
+      { identificacion: req.user.identificacion },
+      { $set: datos }
+    );
+
+    res.status(200).json({ mensaje: 'Perfil actualizado correctamente (Identificación se mantiene intacta)' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Ver historial de préstamos propios del usuario autenticado
-   */
-  static async verHistorialPrestamos(req, res, next) {
-    try {
-      const identificacion = req.user.identificacion;
-      const prestamos = await PrestamoModel.findByUsuarioIdentificacion(identificacion);
+// 3. Ver historial de préstamos propios
+export const verHistorialPrestamos = async (req, res) => {
+  try {
+    const db = getDB();
+    const misPrestamos = await db.collection('prestamos').find({
+      'usuario.identificacion': req.user.identificacion
+    }).toArray();
 
-      res.status(200).json({
-        status: 'success',
-        total: prestamos.length,
-        usuario: {
-          identificacion,
-          nombre: req.user.nombre
-        },
-        prestamos
-      });
-    } catch (error) {
-      next(error);
-    }
+    res.status(200).json(misPrestamos);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Ver historial de compras (ventas) propias del cliente autenticado
-   */
-  static async verHistorialCompras(req, res, next) {
-    try {
-      const identificacion = req.user.identificacion;
-      const compras = await VentaModel.findByClienteIdentificacion(identificacion);
+// 4. Ver historial de compras (ventas) propias
+export const verHistorialCompras = async (req, res) => {
+  try {
+    const db = getDB();
+    const misCompras = await db.collection('ventas').find({
+      'cliente.identificacion': req.user.identificacion
+    }).toArray();
 
-      res.status(200).json({
-        status: 'success',
-        total: compras.length,
-        cliente: {
-          identificacion,
-          nombre: req.user.nombre
-        },
-        compras
-      });
-    } catch (error) {
-      next(error);
-    }
+    res.status(200).json(misCompras);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-
-  /**
-   * Listar todos los usuarios/clientes (Solo Admin)
-   */
-  static async listarTodos(req, res, next) {
-    try {
-      const usuarios = await UsuarioModel.findAll();
-      res.status(200).json({
-        status: 'success',
-        total: usuarios.length,
-        usuarios
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-}
+};

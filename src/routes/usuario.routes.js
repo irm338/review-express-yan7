@@ -1,25 +1,24 @@
 import { Router } from 'express';
-import { UsuarioController } from '../controllers/usuario.controller.js';
-import { validateDTO } from '../middlewares/dto.middleware.js';
-import { updatePerfilDTO } from '../dtos/usuario.dto.js';
-import { authenticateJWT, authorizeRole } from '../middlewares/auth.middleware.js';
+import {
+  obtenerPerfil,
+  actualizarPerfil,
+  verHistorialPrestamos,
+  verHistorialCompras
+} from '../controllers/usuario.controller.js';
+import { validarPerfilDTO } from '../middlewares/dto.middleware.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-// Todas las rutas de usuario requieren autenticación
-router.use(authenticateJWT);
+// Todas las rutas requieren estar autenticado (Cliente/Usuario)
+router.use(authMiddleware);
 
-// Rutas de administración de perfil del usuario logueado
-router.get('/perfil', UsuarioController.obtenerPerfil);
-router.put('/perfil', validateDTO(updatePerfilDTO), UsuarioController.actualizarPerfil);
+// Administrar perfil
+router.get('/perfil', obtenerPerfil);
+router.put('/perfil', validarPerfilDTO, actualizarPerfil);
 
-// Historial propio de préstamos
-router.get('/prestamos/historial', UsuarioController.verHistorialPrestamos);
-
-// Historial propio de compras (ventas)
-router.get('/compras/historial', UsuarioController.verHistorialCompras);
-
-// Listado de usuarios exclusivo para Admin
-router.get('/', authorizeRole('admin'), UsuarioController.listarTodos);
+// Historial personal
+router.get('/historial-prestamos', verHistorialPrestamos);
+router.get('/historial-compras', verHistorialCompras);
 
 export default router;

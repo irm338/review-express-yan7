@@ -1,144 +1,109 @@
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { UsuarioModel } from '../models/usuario.model.js';
-import { config } from '../config/env.js';
-import { setAuthCookie, clearAuthCookie } from '../utils/cookies.js';
+import { getDB } from '../config/db.js';
 
-export class AuthController {
-  /**
-   * Registro de un nuevo Usuario / Cliente
-   */
-  static async register(req, res, next) {
-    try {
-      const { identificacion, nombre, tel, dir, email, password, rol } = req.body;
+// Módulo 5: Autenticación con JWT y Módulo 3: Cookies en NodeJS
 
-      // 1. Verificar si ya existe usuario con esa identificación
-      const existingId = await UsuarioModel.findByIdentificacion(identificacion);
-      if (existingId) {
-        return res.status(409).json({
-          status: 'fail',
-          message: `Ya existe un usuario registrado con la identificación '${identificacion}'`
-        });
-      }
+export const registrar = async (req, res) => {
+  try {
+    const { identificacion, nombre, tel, dir, email, password, rol } = req.body;
+    const db = getDB();
 
-      // 2. Verificar si ya existe usuario con ese correo electrónico
-      const existingEmail = await UsuarioModel.findByEmail(email);
-      if (existingEmail) {
-        return res.status(409).json({
-          status: 'fail',
-          message: `Ya existe un usuario registrado con el correo electrónico '${email}'`
-        });
-      }
+    // 1. Verificar si ya existe el usuario
+    const existe = await db.collection('usuarios').findOne({
+      $or: [{ identificacion }, { email }]
+    });
 
-      // 3. Crear usuario
-      const nuevoUsuario = await UsuarioModel.create({
-        identificacion,
-        nombre,
-        tel,
-        dir,
-        email,
-        password,
-        rol: rol || 'usuario'
-      });
+    if (existe) {
+      return res.status(400).json({ error: 'La identificación o el correo ya están registrados' });
+    }
 
-      // 4. Generar Token JWT
-      const payload = {
-        id: nuevoUsuario._id,
+    // 2. Encriptar contraseña con bcrypt
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // 3. Crear usuario
+    const nuevoUsuario = {
+      identificacion,
+      nombre,
+      tel,
+      dir,
+      email,
+      password: passwordHash,
+      rol: rol || 'usuario',
+      createdAt: new Date()
+    };
+
+    await db.collection('usuarios').insertOne(nuevoUsuario);
+
+    // 4. Generar Token JWT
+    const token = jwt.sign(
+      { identificacion: nuevoUsuario.identificacion, rol: nuevoUsuario.rol },
+      process.env.JWT_SECRET || 'campuslands_secreto_2026',
+      { expiresIn: '24h' }
+    );
+
+    // 5. Guardar en Cookie segura
+    res.cookie('token', token, { httpOnly: true });
+
+    res.status(201).json({
+      mensaje: 'Usuario registrado exitosamente',
+      token,
+      usuario: {
         identificacion: nuevoUsuario.identificacion,
+        nombre: nuevoUsuario.nombre,
         email: nuevoUsuario.email,
         rol: nuevoUsuario.rol
-      };
-
-      const token = jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-
-      // 5. Guardar en Cookie segura
-      setAuthCookie(res, token);
-
-      // Descartar contraseña de la respuesta
-      const { password: _, ...userData } = nuevoUsuario;
-
-      res.status(201).json({
-        status: 'success',
-        message: 'Usuario registrado exitosamente',
-        token,
-        usuario: userData
-      });
-    } catch (error) {
-      next(error);
-    }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Inicio de Sesión (Login)
-   */
-  static async login(req, res, next) {
-    try {
-      const { identificacion, email, password } = req.body;
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const db = getDB();
 
-      // Buscar por email o identificación
-      const usuario = email
-        ? await UsuarioModel.findByEmail(email)
-        : await UsuarioModel.findByIdentificacion(identificacion);
+    // 1. Buscar usuario
+    const usuario = await db.collection('usuarios').findOne({ email });
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+    }
 
-      if (!usuario) {
-        return res.status(401).json({
-          status: 'fail',
-          message: 'Credenciales inválidas. Identificación o correo no encontrado.'
-        });
-      }
+    // 2. Comparar contraseña con bcrypt
+    const coincide = await bcrypt.compare(password, usuario.password);
+    if (!coincide) {
+      return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+    }
 
-      // Verificar la contraseña con bcrypt
-      const passwordMatch = await UsuarioModel.comparePassword(password, usuario.password);
-      if (!passwordMatch) {
-        return res.status(401).json({
-          status: 'fail',
-          message: 'Credenciales inválidas. Contraseña incorrecta.'
-        });
-      }
+    // 3. Generar Token JWT
+    const token = jwt.sign(
+      { identificacion: usuario.identificacion, rol: usuario.rol },
+      process.env.JWT_SECRET || 'campuslands_secreto_2026',
+      { expiresIn: '24h' }
+    );
 
-      // Generar Token JWT
-      const payload = {
-        id: usuario._id,
+    // 4. Guardar en Cookie segura
+    res.cookie('token', token, { httpOnly: true });
+
+    res.status(200).json({
+      mensaje: 'Inicio de sesión exitoso',
+      token,
+      usuario: {
         identificacion: usuario.identificacion,
+        nombre: usuario.nombre,
         email: usuario.email,
         rol: usuario.rol
-      };
-
-      const token = jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
-
-      // Guardar en Cookie segura HttpOnly
-      setAuthCookie(res, token);
-
-      const { password: _, ...userData } = usuario;
-
-      res.status(200).json({
-        status: 'success',
-        message: 'Inicio de sesión exitoso',
-        token,
-        usuario: userData
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
-   * Cerrar Sesión (Logout)
-   */
-  static async logout(req, res) {
-    clearAuthCookie(res);
-    res.status(200).json({
-      status: 'success',
-      message: 'Sesión cerrada correctamente y cookie eliminada'
+      }
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
+};
 
-  /**
-   * Obtener datos del usuario autenticado actual
-   */
-  static async getMe(req, res) {
-    res.status(200).json({
-      status: 'success',
-      usuario: req.user
-    });
-  }
-}
+export const logout = (req, res) => {
+  // Limpiar la cookie de sesión
+  res.clearCookie('token');
+  res.status(200).json({ mensaje: 'Sesión cerrada y cookie eliminada' });
+};

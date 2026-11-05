@@ -1,42 +1,13 @@
 import { Router } from 'express';
-import { PrestamoController } from '../controllers/prestamo.controller.js';
-import { validateDTO } from '../middlewares/dto.middleware.js';
-import { createPrestamoDTO, devolucionDTO } from '../dtos/prestamo.dto.js';
-import { authenticateJWT, authorizeRole } from '../middlewares/auth.middleware.js';
+import { prestarLibro, devolverLibro, listarPrestamos } from '../controllers/prestamo.controller.js';
+import { validarPrestamoDTO } from '../middlewares/dto.middleware.js';
+import { authMiddleware, esAdmin } from '../middlewares/auth.middleware.js';
 
 const router = Router();
 
-// Todas las rutas de préstamos requieren autenticación
-router.use(authenticateJWT);
-
-// Rutas exclusivas de Admin
-router.post(
-  '/',
-  authorizeRole('admin'),
-  validateDTO(createPrestamoDTO),
-  PrestamoController.crearPrestamo
-);
-
-router.put(
-  '/:id/devolucion',
-  authorizeRole('admin'),
-  validateDTO(devolucionDTO),
-  PrestamoController.registrarDevolucion
-);
-
-router.get(
-  '/',
-  authorizeRole('admin'),
-  PrestamoController.listarTodos
-);
-
-router.get(
-  '/usuario/:identificacion',
-  authorizeRole('admin'),
-  PrestamoController.listarPorUsuario
-);
-
-// Detalle de préstamo (Admin o dueño del préstamo)
-router.get('/:id', PrestamoController.obtenerPorId);
+// Exclusivo para Admin
+router.post('/', authMiddleware, esAdmin, validarPrestamoDTO, prestarLibro);
+router.put('/:id/devolucion', authMiddleware, esAdmin, devolverLibro);
+router.get('/', authMiddleware, esAdmin, listarPrestamos);
 
 export default router;
