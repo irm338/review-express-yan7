@@ -10,6 +10,7 @@ import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js
 
 // Rutas
 import authRoutes from './routes/auth.routes.js';
+import libroRoutes from './routes/libro.routes.js';
 
 const app = express();
 
@@ -32,9 +33,13 @@ app.use('/api', generalLimiter);
 // Versionado Semántico Semver (Módulo 4)
 app.use('/api', semverMiddleware(CURRENT_API_VERSION));
 
-// Rutas de autenticación (versión v1 y ruta directa)
+// Rutas de autenticación
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/auth', authRoutes);
+
+// Rutas de libros e inventario (Admin CRUD y público búsqueda/listado)
+app.use('/api/v1/libros', libroRoutes);
+app.use('/api/libros', libroRoutes);
 
 // Ruta base de estado / Health check
 app.get('/api/health', (req, res) => {
