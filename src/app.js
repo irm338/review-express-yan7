@@ -12,6 +12,7 @@ import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js
 import authRoutes from './routes/auth.routes.js';
 import libroRoutes from './routes/libro.routes.js';
 import prestamoRoutes from './routes/prestamo.routes.js';
+import ventaRoutes from './routes/venta.routes.js';
 
 const app = express();
 
@@ -45,6 +46,10 @@ app.use('/api/libros', libroRoutes);
 // Rutas de préstamos de libros
 app.use('/api/v1/prestamos', prestamoRoutes);
 app.use('/api/prestamos', prestamoRoutes);
+
+// Rutas de ventas de libros
+app.use('/api/v1/ventas', ventaRoutes);
+app.use('/api/ventas', ventaRoutes);
 
 // Ruta base de estado / Health check
 app.get('/api/health', (req, res) => {
