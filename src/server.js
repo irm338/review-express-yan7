@@ -1,26 +1,26 @@
+import dotenv from 'dotenv';
 import app from './app.js';
-import { config } from './config/env.js';
 import { connectDB } from './config/db.js';
 
-const PORT = config.port;
+// Cargar variables de entorno del archivo .env
+dotenv.config();
 
-const startServer = async () => {
+const PORT = process.env.PORT || 3000;
+
+// Función para inicializar la base de datos y el servidor Express
+const iniciarServidor = async () => {
   try {
-    // Intentar conectar a MongoDB al iniciar
-    try {
-      await connectDB();
-    } catch (dbErr) {
-      console.warn('⚠️ El servidor continuará ejecutándose. Configure MongoDB para funcionalidades de base de datos.');
-    }
+    // 1. Conectar a MongoDB
+    await connectDB();
 
+    // 2. Levantar el servidor en el puerto configurado
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor Express iniciado con éxito en http://localhost:${PORT}`);
-      console.log(`📡 Ambiente: ${config.nodeEnv}`);
+      console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+      console.log(`📖 Documentación y rutas base: http://localhost:${PORT}/api/v1`);
     });
   } catch (error) {
-    console.error('❌ Error fatal al iniciar el servidor:', error);
-    process.exit(1);
+    console.error('❌ Error al iniciar el servidor:', error.message);
   }
 };
 
-startServer();
+iniciarServidor();

@@ -1,23 +1,27 @@
 import { MongoClient } from 'mongodb';
 import dotenv from 'dotenv';
+
 dotenv.config();
 
-// Módulo 2: Conexión a la base de datos MongoDB
+// Módulo 2: Conexión a la base de datos MongoDB con el driver nativo
 const uri = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const dbName = process.env.MONGO_DB_NAME || 'biblioteca_campus';
 
-let db = null;
+let baseDeDatos = null;
 
 export const connectDB = async () => {
   try {
-    const client = new MongoClient(uri);
-    await client.connect();
-    db = client.db(dbName);
-    console.log(`✅ Conectado exitosamente a MongoDB: [${dbName}]`);
-    return db;
+    const cliente = new MongoClient(uri);
+    await cliente.connect();
+    baseDeDatos = cliente.db(dbName);
+    console.log(`✅ Conexión exitosa a la base de datos MongoDB: [${dbName}]`);
+    return baseDeDatos;
   } catch (error) {
-    console.error(`❌ Error al conectar a MongoDB: ${error.message}`);
+    console.error(`❌ Error en la conexión a MongoDB: ${error.message}`);
   }
 };
 
-export const getDB = () => db;
+// Función para obtener la instancia de la base de datos desde los controladores
+export const getDB = () => {
+  return baseDeDatos;
+};

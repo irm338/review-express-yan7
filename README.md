@@ -1,215 +1,141 @@
-# 📚 Sistema de Gestión de Biblioteca - API RESTful (Review Express)
+# 📚 Sistema de Gestión de Biblioteca - Express & NodeJS (Review Campers)
 
-Proyecto desarrollado para el **Review de Express.js y NodeJS** en **Campuslands** (Trainer: *Edwin Salas*). Implementa una arquitectura profesional basada en el patrón **MVC (Modelo-Vista-Controlador)**, integrando los 5 módulos formativos del curso junto con los requerimientos funcionales para los roles **Admin** y **Usuario / Cliente**.
+API RESTful desarrollada para el **Review de Express.js y NodeJS** en **Campuslands** (Trainer: *Edwin Salas*).
+Construida con una arquitectura limpia, estructurada y con **código sencillo, básico y 100% entendible**, fácil de explicar y sustentar.
 
 ---
 
-## 🚀 Tecnologías y Módulos del Curso Implementados
+## 🚀 Temas Vistos en Clase Implementados
 
-| Módulo | Tema del Curso | Implementación en el Proyecto |
+| Módulo | Tema del Curso | Dónde se encuentra en el código |
 | :--- | :--- | :--- |
-| **Módulo 1** | **Fundamentos de NodeJS y Express** | Servidor modular, variables de entorno (`dotenv`), scripts npm (`start`, `dev`, `seed`, `test`), CORS y logging con `morgan`. |
-| **Módulo 2** | **Servidor Express y MongoDB** | Conexión Singleton con el driver oficial `mongodb` (`MongoClient`), creación automática de índices y seeder de datos. |
-| **Módulo 3** | **Validación de Datos (DTO) y Cookies** | Middleware `validateDTO` para validación y saneamiento de objetos de transferencia, y manejo de cookies seguras `httpOnly` con `cookie-parser`. |
-| **Módulo 4** | **Versionado Semántico y Rate Limit** | Middleware de versionado semántico **SemVer** (`Accept-Version`, `x-api-version`, `/api/v1`) y protección contra ataques con `express-rate-limit`. |
-| **Módulo 5** | **Arquitectura MVC y Autenticación Passport JWT** | Separación por capas (Modelos, Controladores, Rutas, DTOs, Middlewares), Passport.js con estrategia JWT, hashing con `bcryptjs` y RBAC (Control de Acceso Basado en Roles). |
+| **Módulo 1** | **Fundamentos de NodeJS y Express** | `src/app.js` y `src/server.js` (servidor Express, `express.json()`, CORS, variables `.env`). |
+| **Módulo 2** | **Servidor Express y Conexión a MongoDB** | `src/config/db.js` (conexión a MongoDB con `MongoClient` nativo) y `src/utils/seed.js`. |
+| **Módulo 3** | **Validación de Datos (DTO) y Cookies** | `src/middlewares/dto.middleware.js` (validaciones con `if` sencillos) y `src/controllers/auth.controller.js` (`res.cookie('token', ...)`). |
+| **Módulo 4** | **Versionado Semántico (SemVer) y Rate Limit** | `src/middlewares/version.middleware.js` (valida versión semántica) y `src/middlewares/rateLimit.middleware.js` (`express-rate-limit`). |
+| **Módulo 5** | **Arquitectura MVC y Passport JWT** | `src/config/passport.js` (estrategia JWT que lee cookies), `src/middlewares/auth.middleware.js` (autenticación y rol Admin) y carpetas `controllers/` y `routes/`. |
 
 ---
 
 ## 📋 Requerimientos Funcionales
 
 ### 🛡️ Rol: Administrador (Admin)
-1. **Gestión de Libros (CRUD completo):**
-   - **Crear libro:** Código/ISBN, título, autor, editorial, categoría, año de publicación, precio de venta, cantidad disponible (stock) y estado.
-   - **Listar libros:** Con soporte para paginación y filtros por categoría o disponibilidad.
-   - **Buscar libros:** Búsqueda flexible por texto o expresión regular en título, autor, categoría o ISBN.
-   - **Editar libro:** Modificación de datos e inventario.
-   - **Eliminar libro:** Borrado seguro de libros en el inventario.
+1. **Gestionar Libros e Inventario:**
+   - **Crear:** Guarda libro con `isbn`, `titulo`, `autor`, `editorial`, `categoria`, `anioPublicacion`, `precioVenta` y `cantidadDisponible` (stock).
+   - **Listar:** Retorna todos los libros.
+   - **Buscar:** Busca por coincidencia flexible en título, autor, categoría o ISBN (`/api/v1/libros/buscar?termino=...`).
+   - **Editar:** Actualiza datos del libro o stock.
+   - **Eliminar:** Borra el libro por su `_id`.
 2. **Prestar Libros:**
-   - Registro de préstamo vinculando: Libro, usuario, fecha de préstamo, fecha tentativa de devolución, fecha de devolución (inicialmente `null`) y estado `PRESTADO`.
-   - Control de inventario automático: Al realizar un préstamo se valida que haya stock y se descuenta 1 unidad.
-   - Registro de devolución: El admin registra la entrega, guarda la fecha real de devolución, marca el estado en `DEVUELTO` y reintegra automáticamente 1 unidad al stock de inventario.
-   - Listar todos los préstamos con filtros y búsqueda por usuario.
+   - Registra el préstamo con: `libro`, `fechaPrestamo`, `fechaTentativaDevol`, `fechaDevol: null` y `usuario`.
+   - **Control de inventario:** Descuenta automáticamente 1 ejemplar del stock (`cantidadDisponible - 1`).
+   - **Devolución:** Actualiza la `fechaDevol` a la fecha actual, cambia el estado a `DEVUELTO` y reintegra 1 ejemplar al inventario (`cantidadDisponible + 1`).
+   - **Listar préstamos:** Permite al Admin ver todos los préstamos registrados.
 3. **Venta de Libros:**
-   - Registro de venta a un cliente de **1 o varios libros**.
-   - Validación de stock suficiente por cada libro solicitado.
-   - Cálculo automático de subtotales por libro y total general de la venta.
-   - Descuento automático de inventario para todos los libros involucrados en la venta.
-   - Listado de ventas y detalle por ID.
+   - Registra venta a un cliente de **1 o varios libros**.
+   - Valida que haya stock suficiente para cada libro pedido.
+   - Descuenta del inventario las cantidades vendidas de cada libro.
+   - Calcula subtotales y total general.
+   - Permite listar todas las ventas.
 
 ### 👤 Rol: Usuario / Cliente
-1. **Registrarse:**
-   - Registro con: Identificación, nombre, teléfono, dirección, email y contraseña.
-   - Hashing seguro de contraseña con `bcryptjs` (salt rounds: 10).
-2. **Iniciar Sesión:**
-   - Generación de token JWT y almacenamiento automático en **Cookie segura HttpOnly** (`token`).
+1. **Registrarse:** Registro con identificación, nombre, teléfono, dirección, correo y contraseña (encriptada con `bcryptjs`).
+2. **Iniciar Sesión:** Genera token JWT y lo guarda automáticamente en una **Cookie segura HttpOnly** (`token`).
 3. **Administrar Perfil:**
-   - Actualización de datos de contacto (nombre, teléfono, dirección, email, contraseña).
-   - **Regla estricta:** ⚠️ **No cambia ID** (la identificación es inmutable y el middleware DTO rechaza cualquier intento de modificación con error 400).
-4. **Ver Historial de Préstamos:**
-   - Consulta de todos los préstamos propios asociados a la identificación del usuario autenticado.
-5. **Ver Historial de Compras (Ventas):**
-   - Consulta de todas las ventas/compras propias registradas a nombre del cliente autenticado.
+   - Puede actualizar nombre, teléfono, dirección, correo o contraseña.
+   - **Regla estricta:** ⚠️ **No cambia ID** (si intenta modificar la identificación, el middleware DTO rechaza la petición con error 400).
+4. **Ver Historial de Préstamos:** Consulta únicamente los préstamos propios de su identificación.
+5. **Ver Compras:** Consulta únicamente las compras (ventas) asociadas a su identificación.
 
 ---
 
-## 🌿 Estrategia de Ramas en Git (Git Flow)
-
-Este repositorio fue construido y versionado **rama por rama** conforme a cada módulo y requerimiento:
-
-- `feature/modulo1-servidor-express`: Inicialización del servidor Express, configuración base y middlewares globales.
-- `feature/modulo2-mongodb-conexion`: Conexión Singleton a MongoDB, índices y script de seeder.
-- `feature/modulo3-dtos-cookies`: Motor de validación DTO y configuración de cookies HTTP seguras con `cookie-parser`.
-- `feature/modulo4-versionado-ratelimit`: Versionado SemVer y limitador de peticiones con `express-rate-limit`.
-- `feature/modulo5-passport-jwt-auth`: Autenticación con Passport.js, JWT, bcrypt y autorización por roles.
-- `feature/admin-gestion-libros`: CRUD completo de libros e inventario para el Administrador.
-- `feature/admin-prestamos-libros`: Registro de préstamos, control de inventario y devoluciones para el Administrador.
-- `feature/admin-ventas-libros`: Venta de 1 o varios libros, cálculo y descuento de inventario.
-- `feature/usuario-cliente-perfil-historial`: Perfil con ID inmutable, historial de préstamos e historial de compras.
-- `develop`: Integración de todas las características y suite de pruebas automatizadas.
-- `main`: Rama de producción lista para revisión.
-
----
-
-## 📂 Estructura del Proyecto
+## 📂 Estructura Limpia del Proyecto (100% Entendible)
 
 ```text
 review-express-yan7/
-├── .env.example
-├── .env
-├── .gitignore
-├── package.json
-├── README.md
-├── postman_collection.json
+├── .env.example              # Variables de entorno de ejemplo
+├── .env                      # Variables de entorno activas
+├── .gitignore                # Archivos ignorados por git (node_modules, etc.)
+├── package.json              # Dependencias y scripts
+├── README.md                 # Documentación del proyecto
+├── postman_collection.json   # Colección de pruebas para Postman
 ├── tests/
-│   └── api.test.js
+│   └── api.test.js           # Pruebas unitarias básicas con node:test
 └── src/
-    ├── app.js
-    ├── server.js
+    ├── app.js                # Configuración de Express, middlewares y rutas
+    ├── server.js             # Conexión a la BD y arranque en el puerto 3000
     ├── config/
-    │   ├── env.js
-    │   ├── db.js
-    │   └── passport.js
-    ├── middlewares/
-    │   ├── auth.middleware.js
-    │   ├── dto.middleware.js
-    │   ├── error.middleware.js
-    │   ├── rateLimit.middleware.js
-    │   └── version.middleware.js
-    ├── dtos/
-    │   ├── auth.dto.js
-    │   ├── libro.dto.js
-    │   ├── prestamo.dto.js
-    │   ├── venta.dto.js
-    │   └── usuario.dto.js
-    ├── models/
-    │   ├── libro.model.js
-    │   ├── prestamo.model.js
-    │   ├── venta.model.js
-    │   └── usuario.model.js
+    │   ├── db.js             # Conexión directa a MongoDB con MongoClient
+    │   └── passport.js       # Configuración de Passport JWT y lectura de Cookies
     ├── controllers/
-    │   ├── auth.controller.js
-    │   ├── libro.controller.js
-    │   ├── prestamo.controller.js
-    │   ├── venta.controller.js
-    │   └── usuario.controller.js
+    │   ├── auth.controller.js      # Registrar, Login (con Cookie) y Logout
+    │   ├── libro.controller.js     # CRUD de libros e inventario
+    │   ├── prestamo.controller.js  # Prestar libro y registrar devolución
+    │   ├── venta.controller.js     # Registrar venta (1 o varios libros) y listar
+    │   └── usuario.controller.js   # Perfil (No cambia ID), historial préstamos y compras
+    ├── middlewares/
+    │   ├── auth.middleware.js      # authMiddleware y esAdmin
+    │   ├── dto.middleware.js       # Validaciones DTO sencillas (con if)
+    │   ├── rateLimit.middleware.js # express-rate-limit (100 peticiones / 15 min)
+    │   └── version.middleware.js   # semver (1.0.0)
     ├── routes/
-    │   ├── auth.routes.js
-    │   ├── libro.routes.js
-    │   ├── prestamo.routes.js
-    │   ├── venta.routes.js
-    │   └── usuario.routes.js
+    │   ├── auth.routes.js          # Rutas de autenticación
+    │   ├── libro.routes.js         # Rutas de libros
+    │   ├── prestamo.routes.js      # Rutas de préstamos
+    │   ├── venta.routes.js         # Rutas de ventas
+    │   └── usuario.routes.js       # Rutas de usuario / cliente
     └── utils/
-        ├── cookies.js
-        └── seed.js
+        └── seed.js                 # Script para sembrar datos iniciales de prueba
 ```
 
 ---
 
-## ⚙️ Instalación y Puesta en Marcha
+## ⚙️ Puesta en Marcha
 
-### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/irm338/review-express-yan7.git
-cd review-express-yan7
-```
-
-### 2. Instalar dependencias
-```bash
+# 1. Instalar dependencias
 npm install
-```
 
-### 3. Configurar variables de entorno
-Cree un archivo `.env` a partir de `.env.example`:
-```env
-PORT=3000
-NODE_ENV=development
-
-# Conexión a MongoDB (Local o MongoDB Atlas)
-MONGO_URI=mongodb://localhost:27017
-MONGO_DB_NAME=biblioteca_campus
-
-# JWT y Cookies
-JWT_SECRET=campuslands_super_secreto_review_jwt_2026
-JWT_EXPIRES_IN=24h
-COOKIE_SECRET=campuslands_cookie_secret_key_2026
-
-# Rate Limiter
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX=100
-```
-
-### 4. Sembrar datos de prueba (Seeder)
-Ejecute el script de inicialización para poblar usuarios, libros de muestra, préstamos y ventas:
-```bash
+# 2. Sembrar datos de prueba (Crea usuarios y libros iniciales en MongoDB)
 npm run seed
-```
 
-### 5. Iniciar la aplicación
-- En modo desarrollo (recarga automática):
-  ```bash
-  npm run dev
-  ```
-- En modo producción:
-  ```bash
-  npm start
-  ```
-
-### 6. Ejecutar pruebas unitarias
-```bash
+# 3. Ejecutar pruebas unitarias
 npm test
+
+# 4. Iniciar en modo desarrollo
+npm run dev
 ```
 
 ---
 
-## 🔑 Credenciales de Prueba (Sembradas en Seeder)
+## 🔑 Cuentas de Prueba Creadas en el Seeder
 
-| Rol | Identificación | Correo Electrónico | Contraseña |
-| :--- | :--- | :--- | :--- |
-| **Admin** | `1001` | `admin@campuslands.com` | `Admin123*` |
-| **Usuario / Cliente** | `1002` | `yanehtarias12@gmail.com` | `User123*` |
-| **Usuario / Cliente** | `1003` | `carlos@campuslands.com` | `User123*` |
-
----
-
-## 📮 Colección de Postman
-
-El archivo `postman_collection.json` se encuentra en la raíz del proyecto. Para utilizarlo:
-1. Abra Postman.
-2. Haga clic en **Import**.
-3. Seleccione `postman_collection.json`.
-4. Encontrará carpetas organizadas para cada módulo:
-   - `0. Health & Semver`
-   - `1. Autenticación & Cookies`
-   - `2. Admin - Gestión Libros e Inventario`
-   - `3. Admin - Préstamos de Libros`
-   - `4. Admin - Venta de Libros`
-   - `5. Usuario / Cliente - Perfil e Historial`
+* **Administrador:**
+  - Correo: `admin@campuslands.com`
+  - Contraseña: `Admin123*`
+  - Identificación: `1001`
+* **Usuario / Cliente:**
+  - Correo: `yanehtarias12@gmail.com`
+  - Contraseña: `User123*`
+  - Identificación: `1002`
 
 ---
 
-## 👤 Autora
-- **Irma Yaneht Arias García**
-- GitHub: [@irm338](https://github.com/irm338)
-- Email: [yanehtarias12@gmail.com](mailto:yanehtarias12@gmail.com)
-- Institución: **Campuslands**
+## 🌿 Ramas en GitHub
+
+El proyecto cuenta con todas las ramas organizadas por módulo y funcionalidad:
+- `feature/modulo1-servidor-express`
+- `feature/modulo2-mongodb-conexion`
+- `feature/modulo3-dtos-cookies`
+- `feature/modulo4-versionado-ratelimit`
+- `feature/modulo5-passport-jwt-auth`
+- `feature/admin-gestion-libros`
+- `feature/admin-prestamos-libros`
+- `feature/admin-ventas-libros`
+- `feature/usuario-cliente-perfil-historial`
+- `develop`
+- `main`
+
+---
+**Autora:** Irma Yaneht Arias García ([@irm338](https://github.com/irm338))  
+**Institución:** Campuslands
