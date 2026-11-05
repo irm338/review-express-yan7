@@ -11,6 +11,7 @@ import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js
 // Rutas
 import authRoutes from './routes/auth.routes.js';
 import libroRoutes from './routes/libro.routes.js';
+import prestamoRoutes from './routes/prestamo.routes.js';
 
 const app = express();
 
@@ -37,9 +38,13 @@ app.use('/api', semverMiddleware(CURRENT_API_VERSION));
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/auth', authRoutes);
 
-// Rutas de libros e inventario (Admin CRUD y público búsqueda/listado)
+// Rutas de libros e inventario
 app.use('/api/v1/libros', libroRoutes);
 app.use('/api/libros', libroRoutes);
+
+// Rutas de préstamos de libros
+app.use('/api/v1/prestamos', prestamoRoutes);
+app.use('/api/prestamos', prestamoRoutes);
 
 // Ruta base de estado / Health check
 app.get('/api/health', (req, res) => {
