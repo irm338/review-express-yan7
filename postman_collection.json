@@ -1,0 +1,318 @@
+{
+  "info": {
+    "_postman_id": "review-express-yan7-postman-collection",
+    "name": "Review Express - Gestión de Biblioteca (Campuslands)",
+    "description": "Colección completa de pruebas para la API de Gestión de Biblioteca con Express, MongoDB, DTOs, Cookies, Semver, Rate Limit y Passport JWT.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenUsuario",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "libroId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "prestamoId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Health & Semver",
+      "item": [
+        {
+          "name": "Health Check (Semver 1.0.0)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept-Version", "value": "1.0.0", "type": "text" }
+            ],
+            "url": { "raw": "http://localhost:3000/api/health", "protocol": "http", "host": ["localhost"], "port": "3000", "path": ["api", "health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Autenticación & Cookies (Módulos 3 y 5)",
+      "item": [
+        {
+          "name": "Registro Usuario Cliente",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identificacion\": \"1098765432\",\n  \"nombre\": \"Estudiante Campuslands\",\n  \"tel\": \"3101234567\",\n  \"dir\": \"Calle 30 # 15-20, Bucaramanga\",\n  \"email\": \"estudiante@campuslands.com\",\n  \"password\": \"Campus2026*\",\n  \"rol\": \"usuario\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] }
+          }
+        },
+        {
+          "name": "Login Admin (Retorna Token y Guarda Cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) { pm.environment.set('tokenAdmin', res.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@campuslands.com\",\n  \"password\": \"Admin123*\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login Usuario Cliente (Retorna Token y Guarda Cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) { pm.environment.set('tokenUsuario', res.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"yanehtarias12@gmail.com\",\n  \"password\": \"User123*\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Perfil Autenticado (/auth/me)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUsuario}}" }],
+            "url": { "raw": "{{baseUrl}}/auth/me", "host": ["{{baseUrl}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Logout (Limpia Cookie)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Admin - Gestión Libros e Inventario",
+      "item": [
+        {
+          "name": "Crear Libro (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isbn\": \"978-9871138012\",\n  \"titulo\": \"Rayuela\",\n  \"autor\": \"Julio Cortázar\",\n  \"editorial\": \"Alfaguara\",\n  \"categoria\": \"Literatura Latinoamericana\",\n  \"anioPublicacion\": 1963,\n  \"precioVenta\": 58000,\n  \"cantidadDisponible\": 10\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/libros", "host": ["{{baseUrl}}"], "path": ["libros"] }
+          }
+        },
+        {
+          "name": "Listar Todos los Libros",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/libros", "host": ["{{baseUrl}}"], "path": ["libros"] }
+          }
+        },
+        {
+          "name": "Buscar Libros por Término (?q=)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/libros/buscar?q=Clean Code", "host": ["{{baseUrl}}"], "path": ["libros", "buscar"], "query": [{ "key": "q", "value": "Clean Code" }] }
+          }
+        },
+        {
+          "name": "Editar Libro (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precioVenta\": 62000,\n  \"cantidadDisponible\": 15\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/libros/{{libroId}}", "host": ["{{baseUrl}}"], "path": ["libros", "{{libroId}}"] }
+          }
+        },
+        {
+          "name": "Eliminar Libro (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": { "raw": "{{baseUrl}}/libros/{{libroId}}", "host": ["{{baseUrl}}"], "path": ["libros", "{{libroId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Admin - Préstamos de Libros",
+      "item": [
+        {
+          "name": "Prestar Libro (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"libroId\": \"{{libroId}}\",\n  \"usuarioIdentificacion\": \"1002\",\n  \"fechaPrestamo\": \"2026-11-05T10:00:00.000Z\",\n  \"fechaTentativaDevol\": \"2026-11-20T10:00:00.000Z\",\n  \"observaciones\": \"Préstamo para proyecto integrador\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/prestamos", "host": ["{{baseUrl}}"], "path": ["prestamos"] }
+          }
+        },
+        {
+          "name": "Registrar Devolución de Libro (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaDevol\": \"2026-11-18T16:30:00.000Z\",\n  \"observaciones\": \"Libro entregado en perfecto estado\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/prestamos/{{prestamoId}}/devolucion", "host": ["{{baseUrl}}"], "path": ["prestamos", "{{prestamoId}}", "devolucion"] }
+          }
+        },
+        {
+          "name": "Listar Préstamos (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": { "raw": "{{baseUrl}}/prestamos", "host": ["{{baseUrl}}"], "path": ["prestamos"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Admin - Venta de Libros",
+      "item": [
+        {
+          "name": "Registrar Venta (1 o varios libros)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteIdentificacion\": \"1002\",\n  \"libros\": [\n    {\n      \"libroId\": \"{{libroId}}\",\n      \"cantidad\": 2\n    }\n  ],\n  \"metodoPago\": \"efectivo\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/ventas", "host": ["{{baseUrl}}"], "path": ["ventas"] }
+          }
+        },
+        {
+          "name": "Listar Todas las Ventas (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenAdmin}}" }],
+            "url": { "raw": "{{baseUrl}}/ventas", "host": ["{{baseUrl}}"], "path": ["ventas"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Usuario / Cliente - Perfil e Historial",
+      "item": [
+        {
+          "name": "Ver Mi Perfil",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUsuario}}" }],
+            "url": { "raw": "{{baseUrl}}/usuarios/perfil", "host": ["{{baseUrl}}"], "path": ["usuarios", "perfil"] }
+          }
+        },
+        {
+          "name": "Editar Mi Perfil (Sin ID)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenUsuario}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Irma Yaneht Arias García\",\n  \"tel\": \"3151234567\",\n  \"dir\": \"Carrera 27 # 36-14, Bucaramanga\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/usuarios/perfil", "host": ["{{baseUrl}}"], "path": ["usuarios", "perfil"] }
+          }
+        },
+        {
+          "name": "Intento de Cambiar ID (Debe retornar 400 Bad Request)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{tokenUsuario}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identificacion\": \"9999999\",\n  \"nombre\": \"Intento Invalido\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/usuarios/perfil", "host": ["{{baseUrl}}"], "path": ["usuarios", "perfil"] }
+          }
+        },
+        {
+          "name": "Ver Mi Historial de Préstamos",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUsuario}}" }],
+            "url": { "raw": "{{baseUrl}}/usuarios/prestamos/historial", "host": ["{{baseUrl}}"], "path": ["usuarios", "prestamos", "historial"] }
+          }
+        },
+        {
+          "name": "Ver Mi Historial de Compras (Ventas)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{tokenUsuario}}" }],
+            "url": { "raw": "{{baseUrl}}/usuarios/compras/historial", "host": ["{{baseUrl}}"], "path": ["usuarios", "compras", "historial"] }
+          }
+        }
+      ]
+    }
+  ]
+}
