@@ -1,0 +1,43 @@
+{
+  "name": "review-express-yan7",
+  "version": "1.0.0",
+  "description": "API RESTful para la gestión de biblioteca: libros, inventario, préstamos, ventas y usuarios con Express, MongoDB, DTOs, Cookies, Semver, Rate Limit y Passport JWT",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js",
+    "seed": "node src/utils/seed.js",
+    "test": "node --test"
+  },
+  "keywords": [
+    "express",
+    "nodejs",
+    "mongodb",
+    "passport-jwt",
+    "rate-limit",
+    "semver",
+    "cookies",
+    "dto",
+    "campuslands"
+  ],
+  "author": "Irma Yaneht Arias García <yanehtarias12@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongodb": "^6.13.0",
+    "morgan": "^1.10.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "semver": "^7.7.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
