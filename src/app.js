@@ -8,11 +8,12 @@ import { generalLimiter } from './middlewares/rateLimit.middleware.js';
 import { semverMiddleware, CURRENT_API_VERSION } from './middlewares/version.middleware.js';
 import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js';
 
-// Rutas
+// Rutas de los módulos
 import authRoutes from './routes/auth.routes.js';
 import libroRoutes from './routes/libro.routes.js';
 import prestamoRoutes from './routes/prestamo.routes.js';
 import ventaRoutes from './routes/venta.routes.js';
+import usuarioRoutes from './routes/usuario.routes.js';
 
 const app = express();
 
@@ -35,21 +36,19 @@ app.use('/api', generalLimiter);
 // Versionado Semántico Semver (Módulo 4)
 app.use('/api', semverMiddleware(CURRENT_API_VERSION));
 
-// Rutas de autenticación
+// Rutas versionadas v1
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/auth', authRoutes);
-
-// Rutas de libros e inventario
 app.use('/api/v1/libros', libroRoutes);
-app.use('/api/libros', libroRoutes);
-
-// Rutas de préstamos de libros
 app.use('/api/v1/prestamos', prestamoRoutes);
-app.use('/api/prestamos', prestamoRoutes);
-
-// Rutas de ventas de libros
 app.use('/api/v1/ventas', ventaRoutes);
+app.use('/api/v1/usuarios', usuarioRoutes);
+
+// Alias directo para compatibilidad (/api/...)
+app.use('/api/auth', authRoutes);
+app.use('/api/libros', libroRoutes);
+app.use('/api/prestamos', prestamoRoutes);
 app.use('/api/ventas', ventaRoutes);
+app.use('/api/usuarios', usuarioRoutes);
 
 // Ruta base de estado / Health check
 app.get('/api/health', (req, res) => {
@@ -60,5 +59,9 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Manejadores de error (404 y errores no controlados)
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 export default app;
