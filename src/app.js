@@ -3,6 +3,8 @@ import cors from 'cors';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import { config } from './config/env.js';
+import { generalLimiter } from './middlewares/rateLimit.middleware.js';
+import { semverMiddleware, CURRENT_API_VERSION } from './middlewares/version.middleware.js';
 import { notFoundHandler, errorHandler } from './middlewares/error.middleware.js';
 
 const app = express();
@@ -17,11 +19,18 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser(config.cookieSecret));
 app.use(morgan('dev'));
 
+// Limitador de peticiones general (Módulo 4)
+app.use('/api', generalLimiter);
+
+// Versionado Semántico Semver (Módulo 4)
+app.use('/api', semverMiddleware(CURRENT_API_VERSION));
+
 // Ruta base de estado / Health check
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'Servidor Express de Biblioteca funcionando correctamente',
+    apiVersion: req.apiVersion || CURRENT_API_VERSION,
     timestamp: new Date().toISOString()
   });
 });
